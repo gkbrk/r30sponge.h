@@ -1,0 +1,38 @@
+#!/usr/bin/env python3
+from pathlib import Path
+import subprocess
+import tempfile
+from distutils.dir_util import copy_tree
+import unittest
+
+def test_path(path):
+    assert (path / "run.sh").exists()
+    
+    with tempfile.TemporaryDirectory() as temp:
+        temp = Path(temp)
+        (temp / "r30sponge.h").write_text(Path("r30sponge.h").read_text())
+        copy_tree(str(path), str(temp))
+        assert subprocess.run(["chmod", "+x", "./run.sh"], cwd=temp).returncode == 0
+        res = subprocess.run(["./run.sh"], cwd=temp, capture_output=True)
+        print(res.stdout.decode("utf-8"))
+        print(res.stderr.decode("utf-8"))
+        print("Return code:", res.returncode)
+        assert res.returncode == 0
+            
+
+def test_paths():
+    yield from Path("tests").glob("*")
+    yield from Path("examples").glob("*")
+    yield from Path("bindings").glob("*")
+
+
+class Tests(unittest.TestCase):
+    pass
+
+def add_test_case(path):
+    setattr(Tests, "test_" + str(path).replace('/', '_'), lambda x: test_path(path))
+    
+for path in test_paths():
+    add_test_case(path)
+
+unittest.main(buffer=True)
